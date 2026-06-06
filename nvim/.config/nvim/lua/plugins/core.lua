@@ -82,4 +82,9 @@ return {
 			sign_priority = 20,
 		},
 	},
+	{
+		"folke/which-key.nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
 }
