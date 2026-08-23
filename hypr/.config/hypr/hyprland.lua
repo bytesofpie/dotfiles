@@ -47,8 +47,6 @@ local fileManager = "dolphin"
 local menu = "hyprlauncher"
 local browser = "firefox"
 
-require("qconsole")
-
 -------------------
 ---- AUTOSTART ----
 -------------------
@@ -187,6 +185,8 @@ hl.animation({ leaf = "workspaces", enabled = true, speed = 0.4, bezier = "almos
 hl.animation({ leaf = "workspacesIn", enabled = true, speed = 0.4, bezier = "almostLinear", style = "fade" })
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 0.4, bezier = "almostLinear", style = "fade" })
 hl.animation({ leaf = "zoomFactor", enabled = true, speed = 0.5, bezier = "quick" })
+
+require("qconsole")
 
 -- Ref https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
 -- "Smart gaps" / "No gaps when only"
