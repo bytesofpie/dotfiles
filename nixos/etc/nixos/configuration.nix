@@ -153,6 +153,11 @@
   programs.nix-ld.enable = true;
   services.flatpak.enable = true;
 
+  environment.variables = {
+    XCURSOR_THEME = "Bibata-Modern-Classic";
+    XCURSOR_SIZE = "18";
+  };
+
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     MESA_LOADER_DRIVER_OVERRIDE = "vmwgfx";
@@ -161,6 +166,7 @@
 
   environment.systemPackages = with pkgs; [
     ast-grep
+    bibata-cursors
     btop
     clang
     clang-tools
