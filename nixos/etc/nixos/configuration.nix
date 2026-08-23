@@ -188,7 +188,6 @@
     mako
     mesa-demos
     neovim
-    opencode
     pciutils
     pkg-config
     quickshell

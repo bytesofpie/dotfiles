@@ -69,6 +69,7 @@ local browser     = "firefox"
 hl.on("hyprland.start", function ()
   hl.exec_cmd("hyprpaper")
   hl.exec_cmd("1password --silent")
+  hl.exec_cmd("quickshell --config bar --no-duplicate")
 end)
 
 -------------------------------

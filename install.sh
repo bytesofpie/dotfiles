@@ -10,6 +10,7 @@ HOME_FOLDERS=(
   hypr
   mise
   nvim
+  quickshell
 )
 
 SYSTEM_FOLDERS=(
