@@ -1,3 +1,5 @@
+export EDITOR="nvim"
+
 alias n="nvim"
 alias lzg="lazygit"
 

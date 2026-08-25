@@ -16,6 +16,11 @@
 
   boot.initrd.kernelModules = [ "vmwgfx" ];
   boot.kernelModules = [ "vmwgfx" ];
+  boot.extraModprobeConfig = ''
+    # VMware's virtual HDA controller can lose MSI interrupts and lock up
+    # while ALSA resets a stream, stalling graphics and audio together.
+    options snd_hda_intel enable_msi=0 bdl_pos_adj=64
+  '';
 
   networking.hostName = "meru"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.

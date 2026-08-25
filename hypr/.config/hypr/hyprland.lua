@@ -18,24 +18,11 @@
 ---- MONITORS ----
 ------------------
 
--- See https://wiki.hypr.land/Configuring/Basics/Monitors/
-hl.monitor({
-	output = "",
-	mode = "preferred",
-	position = "auto",
-	scale = "auto",
-})
+local monitor_scale = 2
+hl.monitor({ output = "Virtual-1", mode = "3456x2168@60.00Hz", position = "0x0", scale = monitor_scale })
 
-hl.config({
-	monitor = {
-		{
-			name = "Virtual-1",
-			resolution = "preferred",
-			position = "0x0",
-			scale = 1,
-		},
-	},
-})
+local gdk_scale = 1
+hl.env("GDK_SCALE", tostring(gdk_scale))
 
 ---------------------
 ---- MY PROGRAMS ----
@@ -146,7 +133,7 @@ hl.config({
 		},
 
 		blur = {
-			enabled = true,
+			enabled = false,
 			size = 3,
 			passes = 1,
 			vibrancy = 0.1696,
@@ -236,6 +223,10 @@ hl.config({
 		force_default_wallpaper = -1, -- Set to 0 or 1 to disable the anime mascot wallpapers
 		disable_hyprland_logo = false, -- If true disables the random hyprland logo / anime girl background. :(
 	},
+	cursor = {
+		-- VMware's virtual GPU can intermittently lose its hardware cursor plane.
+		no_hardware_cursors = 1,
+	},
 })
 
 ---------------
@@ -253,6 +244,8 @@ hl.config({
 		follow_mouse = 1,
 
 		sensitivity = 0, -- -1.0 - 1.0, 0 means no modification.
+		-- Preserve VMware Fusion's high-resolution trackpad scroll events.
+		emulate_discrete_scroll = 0,
 
 		touchpad = {
 			natural_scroll = false,
