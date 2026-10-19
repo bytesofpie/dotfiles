@@ -1,0 +1,413 @@
+#+TITLE:bytesofpie's Emacs Config
+#+AUTHOR: Kramer Hampton (bytesofpie)
+#+DESCRIPTION: Personal Emacs config
+#+STARTUP: showeverything
+#+OPTIONS: toc:2
+
+* Table of Contents :toc:
+- [[#important-programs-to-load-first][Important Programs to Load First]]
+  - [[#elpaca-package-manager][Elpaca Package Manager]]
+  - [[#load-mise-shims][Load mise shims]]
+  - [[#load-evil-mode][Load Evil Mode]]
+  - [[#general-keybindings][General Keybindings]]
+  - [[#emacs-tweaks][Emacs Tweaks]]
+- [[#fonts][Fonts]]
+  - [[#set-the-font-face][Set the font face]]
+- [[#theme][Theme]]
+  - [[#setup-dark-mode][Setup dark mode]]
+- [[#gui-tweaks][GUI Tweaks]]
+  - [[#disable-menubar-toolbars-and-scrollbars][Disable Menubar, Toolbars, and Scrollbars]]
+  - [[#line-numbers][Line numbers]]
+- [[#org-mode][Org mode]]
+  - [[#enabling-table-of-contents][Enabling table of contents]]
+  - [[#enabling-org-bullets][Enabling org bullets]]
+- [[#git][Git]]
+  - [[#setup-magit][Setup Magit]]
+- [[#which-key][Which key]]
+- [[#completion][Completion]]
+- [[#programming-support][Programming support]]
+
+* Important Programs to Load First
+
+#+begin_src emacs-lisp
+  ;;; -*- lexical-binding: t; -*-
+  ;; Some packages don't do this, so silencing
+  (add-to-list 'warning-suppress-types
+               '(files missing-lexbind-cookie))
+
+  (add-to-list 'load-path
+               (expand-file-name "lisp" user-emacs-directory))
+
+  (add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+  (require 'bytesofpie)
+#+end_src
+
+** Elpaca Package Manager
+
+#+begin_src emacs-lisp
+  ;;; -*- lexical-binding: t; -*-
+
+  (defvar elpaca-installer-version 0.12)
+  (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+  (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+  (defvar elpaca-sources-directory (expand-file-name "sources/" elpaca-directory))
+  (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                                :ref nil :depth 1 :inherit ignore
+                                :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                                :build (:not elpaca-activate)))
+  (let* ((repo  (expand-file-name "elpaca/" elpaca-sources-directory))
+         (build (expand-file-name "elpaca/" elpaca-builds-directory))
+         (order (cdr elpaca-order))
+         (default-directory repo))
+    (add-to-list 'load-path (if (file-exists-p build) build repo))
+    (unless (file-exists-p repo)
+      (make-directory repo t)
+      (when (<= emacs-major-version 28) (require 'subr-x))
+      (condition-case-unless-debug err
+          (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                    ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                    ,@(when-let* ((depth (plist-get order :depth)))
+                                                        (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                    ,(plist-get order :repo) ,repo))))
+                    ((zerop (call-process "git" nil buffer t "checkout"
+                                          (or (plist-get order :ref) "--"))))
+                    (emacs (concat invocation-directory invocation-name))
+                    ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                          "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                    ((require 'elpaca))
+                    ((elpaca-generate-autoloads "elpaca" repo)))
+              (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+            (error "%s" (with-current-buffer buffer (buffer-string))))
+        ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+    (unless (require 'elpaca-autoloads nil t)
+      (require 'elpaca)
+      (elpaca-generate-autoloads "elpaca" repo)
+      (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
+  (add-hook 'after-init-hook #'elpaca-process-queues)
+  (elpaca `(,@elpaca-order))
+
+  ;; Install a package via the elpaca macro
+
+  ;; Install use-package support
+  (elpaca elpaca-use-package
+    ;; Enable use-package :ensure support for Elpaca.
+    (elpaca-use-package-mode))
+
+  ;;Turns off elpaca-use-package-mode current declaration
+  ;;Note this will cause evaluate the declaration immediately. It is not deferred.
+  ;;Useful for configuring built-in emacs features.
+  (use-package emacs :ensure nil :config (setq ring-bell-function #'ignore))
+#+end_src
+
+** Load mise shims
+
+#+begin_src emacs-lisp
+  (let ((mise-shims (expand-file-name "~/.local/share/mise/shims")))
+    (add-to-list 'exec-path mise-shims)
+    (setenv "PATH"
+            (concat mise-shims path-separator (getenv "PATH"))))
+#+end_src
+
+** Load Evil Mode
+
+#+begin_src emacs-lisp
+  (use-package evil
+    :ensure t
+    :demand t
+    :init
+    (setq evil-want-integration t)
+    (setq evil-want-keybinding nil)
+    (setq evil-vsplit-window-right t)
+    (setq evil-split-window-below t)
+    :config
+    (evil-mode 1))
+
+  (use-package evil-collection
+    :ensure t
+    :after evil
+    :config
+    (setq evil-collection-mode-list '(dashboard dired ibuffer))
+    (evil-collection-init))
+
+  (use-package evil-tutor :ensure t)
+#+end_src
+
+
+** General Keybindings
+
+#+begin_src emacs-lisp
+  (use-package general
+    :ensure (:wait t)
+    :demand t
+    :config
+    (general-evil-setup)
+
+    ;; setup 'SPC' as the global leader key
+    (general-create-definer bytesofpie/leader-keys
+      :states '(normal insert visual emacs)
+      :keymaps 'override
+      :prefix "SPC"
+      :global-prefix "M-SPC")
+
+    ;; Leader bindings
+    (bytesofpie/leader-keys
+      "w" '(save-buffer :wk "Write buffer")
+      "b" '(:ignore t :wk "buffer")
+      "bd" '(kill-current-buffer :wk "Kill current buffer")
+      "bo" '(bytesofpie/kill-other-buffers :wk "Kill other buffers")
+      "|" '(split-window-right :which-key "Vertical split")
+      "\"" '(split-window-below :which-key "Horizontal split")
+      "hr" '((lambda ()
+               (interactive)
+               (org-babel-load-file
+                (expand-file-name "config.org" user-emacs-directory)))
+  	   :which-key "Reload config")
+      "hc" '((lambda ()
+  	     (interactive)
+  	     (find-file (expand-file-name "config.org" user-emacs-directory)))
+  	   :which-key "Open config")
+      )
+
+    ;; Top level bindings
+    (general-define-key
+     :states '(normal)
+     :keymaps 'override
+     "H" #'previous-buffer
+     "L" #'next-buffer))
+
+  (use-package windmove
+    :ensure nil
+    :general
+    (:keymaps 'override
+  	    "C-h" #'windmove-left
+  	    "C-j" #'windmove-down
+  	    "C-k" #'windmove-up
+  	    "C-l" #'windmove-right))
+#+end_src
+
+** Emacs Tweaks
+
+#+begin_src emacs
+#+end_src
+
+* Fonts
+
+** Set the font face
+
+#+begin_src emacs-lisp
+  ;; Default font
+  (set-face-attribute 'default nil
+                      :family "TX-02"
+                      :height 140
+                      :weight 'medium)
+
+  ;; Fixed-pitch font for Org and other modes
+  (set-face-attribute 'fixed-pitch nil
+                      :inherit 'default)
+
+  ;; Apply the same font to newly created frames
+  (add-to-list 'default-frame-alist
+               '(font . "TX-02-14"))
+
+  ;; Italic comments
+  (set-face-attribute 'font-lock-comment-face nil
+                      :slant 'italic)
+
+  ;; Line spacing
+  (setq-default line-spacing 0.12)
+#+end_src
+
+* Theme
+
+** Setup dark mode
+
+#+begin_src emacs-lisp
+  ;; macOS dark appearance
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+
+  ;; Gruber Darker
+  (use-package gruber-darker-theme
+    :ensure t
+    :config
+    (load-theme 'gruber-darker t))
+#+end_src
+
+* GUI Tweaks
+
+** Disable Menubar, Toolbars, and Scrollbars
+
+#+begin_src emacs-lisp
+  (menu-bar-mode -1)
+  (tool-bar-mode -1)
+  (scroll-bar-mode -1)
+#+end_src
+
+** Line numbers
+#+begin_src emacs-lisp
+  (setq display-line-numbers-type 'relative)
+  (global-display-line-numbers-mode 1)
+  (global-visual-line-mode 1)
+#+end_src
+
+* Org mode
+** Enabling table of contents
+#+begin_src emacs-lisp
+  (use-package toc-org
+    :ensure t
+    :commands toc-org-enable
+    :init (add-hook 'org-mode-hook 'toc-org-enable))
+#+end_src
+
+** Enabling org bullets
+#+begin_src emacs-lisp
+  (add-hook 'org-mode-hook 'org-indent-mode)
+  (use-package org-bullets :ensure t)
+  (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+#+end_src
+
+* Git
+
+** Setup Magit
+
+#+begin_src emacs-lisp
+  (use-package magit
+    :ensure t
+    :commands (magit-status)
+    :general
+    (bytesofpie/leader-keys
+      "gg" '(magit-status :which-key "Git status")))
+#+end_src
+
+* Which key
+
+#+begin_src emacs-lisp
+  (use-package which-key
+    :ensure nil
+    :init
+    (which-key-mode 1)
+    :config
+    (setq which-key-side-window-location 'bottom
+  	which-key-sort-order #'which-key-key-order-alpha
+  	which-key-sort-uppercase-first nil
+  	which-key-add-column-padding 1
+  	which-key-max-display-columns nil
+  	which-key-min-display-lines 6
+  	which-key-side-window-slot -10
+  	which-key-size-window-max-height 0.25
+  	which-key-idle-delay 0.8
+  	which-key-max-description-length 25
+  	which-key-allow-imprecise-window-fit t
+  	which-key-separator " ➜ "))
+#+end_src
+
+* Completion
+
+#+begin_src emacs-lisp
+  (use-package vertico
+    :ensure t
+    :config
+    (vertico-mode 1))
+
+  (use-package orderless
+    :ensure t
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-overrides
+     '((file (styles partial-completion)))))
+
+  (use-package consult
+    :ensure t
+    :commands (consult-fd consult-ripgrep consult-buffer)
+    :general
+    (bytesofpie/leader-keys
+      "SPC" '(consult-fd :which-key "Find file")
+      "sg" '(consult-ripgrep :which-key "Search project")
+      "bb" '(consult-buffer :which-key "Switch buffer")))
+
+  (use-package corfu
+    :ensure t
+    :custom
+    (corfu-auto t)
+    (corfu-auto-delay 0.2)
+    (corfu-auto-prefix 2)
+    (corfu-cycle t)
+    :config
+    (global-corfu-mode 1)
+    (with-eval-after-load 'evil-collection
+      (evil-collection-init 'corfu))
+    (with-eval-after-load 'evil-collection-corfu
+      (evil-define-key 'insert corfu-map
+        (kbd "C-y") #'corfu-insert))
+    )
+#+end_src
+
+* Programming support
+
+#+begin_src emacs-lisp
+  (use-package projectile
+    :ensure t
+    :demand t
+    :config
+    (projectile-mode 1)
+    :general
+    (bytesofpie/leader-keys
+      "pp" '(projectile-switch-project :which-key "Switch project")
+      "pf" '(projectile-find-file :which-key "Find project file")
+      "pb" '(projectile-switch-to-buffer :which-key "Project buffer")
+      "pc" '(projectile-compile-project :which-key "Compile project")))
+
+  (use-package treesit
+    :ensure nil
+    :custom
+    (treesit-font-lock-level 4)
+    (treesit-enabled-modes
+     '(c-ts-mode c++-ts-mode elixir-ts-mode)))
+
+  (use-package elixir-ts-mode
+    :ensure nil)
+
+  (use-package erlang
+    :ensure t)
+
+  (use-package clojure-ts-mode
+    :ensure t)
+
+
+  (use-package apheleia
+    :ensure t
+    :demand t
+    :config
+    (apheleia-global-mode 1)
+
+    :general
+    (bytesofpie/leader-keys
+      "cf" '(apheleia-format-buffer :which-key "Format buffer")))
+
+
+
+  (use-package cider
+    :ensure t
+    :commands (cider-jack-in-clj cider-connect)
+    :custom
+    ;; Show REPL on connect, but keep focus in source buffer
+    (cider-repl-pop-to-buffer-on-connect 'display-only)
+
+    :config
+    ;; Always display CIDER REPL buffers on the right
+    (add-to-list 'display-buffer-alist
+                 '("\\*cider-repl"
+                   (display-buffer-in-side-window)
+                   (side . right)
+                   (window-width . 0.40)))
+
+    :general
+    (bytesofpie/leader-keys
+      "cj" '(cider-jack-in-clj :which-key "Start REPL")
+      "cl" '(cider-load-buffer :which-key "Load namespace")
+      "ce" '(cider-eval-list-at-point :which-key "Eval expression")
+      "cd" '(cider-eval-defun-at-point :which-key "Eval definition")
+      "cr" '(cider-switch-to-repl-buffer :which-key "Switch to REPL")
+      "cc" '(cider-quit :wk "Close REPL"))
+    )
+#+end_src
