@@ -17,7 +17,7 @@
   - [[#setup-dark-mode][Setup dark mode]]
 - [[#gui-tweaks][GUI Tweaks]]
   - [[#disable-menubar-toolbars-and-scrollbars][Disable Menubar, Toolbars, and Scrollbars]]
-  - [[#line-numbers][Line numbers]]
+  - [[#line-numbers-and-other-line-customization][Line numbers and other line customization]]
 - [[#org-mode][Org mode]]
   - [[#enabling-table-of-contents][Enabling table of contents]]
   - [[#enabling-org-bullets][Enabling org bullets]]
@@ -37,6 +37,8 @@
 
   (add-to-list 'load-path
                (expand-file-name "lisp" user-emacs-directory))
+
+  (setq backup-directory-alist            '((".*" . "~/.emacs-bak")))
 
   (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
@@ -112,6 +114,9 @@
 ** Load Evil Mode
 
 #+begin_src emacs-lisp
+  (use-package undo-fu
+    :ensure t)
+
   (use-package evil
     :ensure t
     :demand t
@@ -120,6 +125,7 @@
     (setq evil-want-keybinding nil)
     (setq evil-vsplit-window-right t)
     (setq evil-split-window-below t)
+    (setq evil-undo-system 'undo-fu)
     :config
     (evil-mode 1))
 
@@ -153,6 +159,7 @@
     ;; Leader bindings
     (bytesofpie/leader-keys
       "w" '(save-buffer :wk "Write buffer")
+      "e" '(dired-jump :wk "Open file explorer")
       "b" '(:ignore t :wk "buffer")
       "bd" '(kill-current-buffer :wk "Kill current buffer")
       "bo" '(bytesofpie/kill-other-buffers :wk "Kill other buffers")
@@ -216,6 +223,38 @@
 
   ;; Line spacing
   (setq-default line-spacing 0.12)
+
+  ;; Enable ligatures
+  (use-package ligature
+    :ensure (:host github :repo "mickeynp/ligature.el")
+    :config
+    (ligature-set-ligatures
+     'prog-mode
+     '(; Group A
+       ".." ".=" "..." "..<" "::" ":::" ":=" "::=" ";;" ";;;" "??" "???"
+       ".?" "?." ":?" "?:" "?=" "**" "***" "/*" "*/" "/**"
+  					; Group B
+       "<-" "->" "-<" ">-" "<--" "-->" "<<-" "->>" "-<<" ">>-" "<-<" ">->"
+       "<-|" "|->" "-|" "|-" "||-" "<!--" "<#--" "<=" "=>" ">=" "<==" "==>"
+       "<<=" "=>>" "=<<" ">>=" "<=<" ">=>" "<=|" "|=>" "<=>" "<==>" "||="
+       "|=" "//=" "/="
+  					; Group C
+       "<<" ">>" "<<<" ">>>" "<>" "<$" "$>" "<$>" "<+" "+>" "<+>" "<:" ":<"
+       "<:<" ">:" ":>" "<~" "~>" "<~>" "<<~" "<~~" "~~>" "~~" "<|" "|>"
+       "<|>" "<||" "||>" "<|||" "|||>" "</" "/>" "</>" "<*" "*>" "<*>" ":?>"
+  					; Group D
+       "#(" "#{" "#[" "]#" "#!" "#?" "#=" "#_" "#_(" "##" "###" "####"
+  					; Group E
+       "[|" "|]" "[<" ">]" "{!!" "!!}" "{|" "|}" "{{" "}}" "{{--" "--}}"
+       "{!--" "//" "///" "!!"
+  					; Group F
+       "www" "@_" "&&" "&&&" "&=" "~@" "++" "+++" "/\\" "\\/" "_|_" "||"
+  					; Group G
+       "=:" "=:=" "=!=" "==" "===" "=/=" "=~" "~-" "^=" "__" "!=" "!==" "-~"
+       "--" "---"))
+    ;; Enables ligature checks globally in all buffers. You can also do it
+    ;; per mode with `ligature-mode'.
+    (global-ligature-mode t))
 #+end_src
 
 * Theme
@@ -243,11 +282,13 @@
   (scroll-bar-mode -1)
 #+end_src
 
-** Line numbers
+** Line numbers and other line customization
 #+begin_src emacs-lisp
   (setq display-line-numbers-type 'relative)
   (global-display-line-numbers-mode 1)
   (global-visual-line-mode 1)
+
+  (setq-default truncate-lines t)
 #+end_src
 
 * Org mode
@@ -319,11 +360,21 @@
   (use-package consult
     :ensure t
     :commands (consult-fd consult-ripgrep consult-buffer)
+    :custom
+    (consult-async-min-input 1)
     :general
     (bytesofpie/leader-keys
-      "SPC" '(consult-fd :which-key "Find file")
       "sg" '(consult-ripgrep :which-key "Search project")
       "bb" '(consult-buffer :which-key "Switch buffer")))
+
+  (use-package fzfa
+    :ensure t
+    :defer t
+    :init
+    (fzfa-sync-autoloads)
+    :general
+    (bytesofpie/leader-keys
+      "SPC" '(fzfa-smart-find :which-key "Find file")))
 
   (use-package corfu
     :ensure t
@@ -362,7 +413,14 @@
     :custom
     (treesit-font-lock-level 4)
     (treesit-enabled-modes
-     '(c-ts-mode c++-ts-mode elixir-ts-mode)))
+     '(c-ts-mode c++-ts-mode elixir-ts-mode markdown-ts-mode)))
+
+  (use-package markdown-ts-mode
+    :ensure nil
+    :demand t
+    :mode ("\\.md\\'" . markdown-ts-mode)
+    :config
+    (setq markdown-ts-hide-markup nil))
 
   (use-package elixir-ts-mode
     :ensure nil)
@@ -370,21 +428,45 @@
   (use-package erlang
     :ensure t)
 
+  (use-package paredit
+    :ensure (:wait t)
+    :commands paredit-mode
+    :hook
+    (emacs-lisp-mode . paredit-mode)
+    (clojure-ts-mode . paredit-mode)
+    :general
+    (bytesofpie/leader-keys
+      "k" '(:ignore t :wk "Structural editing")
+
+      "k s" '(paredit-forward-slurp-sexp :wk "Slurp forward")
+      "k b" '(paredit-forward-barf-sexp :wk "Barf forward")
+      "k S" '(paredit-backward-slurp-sexp :wk "Slurp backward")
+      "k B" '(paredit-backward-barf-sexp :wk "Barf backward")
+
+      "k w" '(paredit-wrap-sexp :wk "Wrap expression")
+      "k r" '(paredit-raise-sexp :wk "Raise expression")
+      "k x" '(paredit-splice-sexp :wk "Splice expression")))
+
+  (use-package enhanced-evil-paredit
+    :ensure t
+    :commands enhanced-evil-paredit-mode
+    :hook (paredit-mode . enhanced-evil-paredit-mode))
+
   (use-package clojure-ts-mode
     :ensure t)
 
-
+  ;; Add a formatter
   (use-package apheleia
     :ensure t
     :demand t
     :config
     (apheleia-global-mode 1)
+    (setf (alist-get 'sql-mode apheleia-mode-alist)
+  	'sqlfluff)
 
     :general
     (bytesofpie/leader-keys
       "cf" '(apheleia-format-buffer :which-key "Format buffer")))
-
-
 
   (use-package cider
     :ensure t
@@ -403,11 +485,62 @@
 
     :general
     (bytesofpie/leader-keys
-      "cj" '(cider-jack-in-clj :which-key "Start REPL")
-      "cl" '(cider-load-buffer :which-key "Load namespace")
-      "ce" '(cider-eval-list-at-point :which-key "Eval expression")
-      "cd" '(cider-eval-defun-at-point :which-key "Eval definition")
-      "cr" '(cider-switch-to-repl-buffer :which-key "Switch to REPL")
-      "cc" '(cider-quit :wk "Close REPL"))
+      "cj" '(cider-jack-in-clj :wk "Start REPL")
+      "cl" '(cider-load-buffer :wk "Load namespace")
+      "ce" '(cider-eval-list-at-point :wk "Eval expression")
+      "cd" '(cider-eval-defun-at-point :wk "Eval definition")
+      "cr" '(cider-switch-to-repl-buffer :wk "Switch to REPL")
+      "cc" '(cider-quit :wk "Close REPL")
+      "cl" '(cider-load-buffer :wk "Load buffer"))
     )
+
+  (use-package flycheck
+    :ensure t
+    :init
+    (global-flycheck-mode)
+    :general
+    (bytesofpie/leader-keys
+      "xx" '(flycheck-list-errors :which-key "Diagnostics")
+      "xn" '(flycheck-next-error :which-key "Next diagnostic")
+      "xp" '(flycheck-previous-error :which-key "Previous diagnostic")))
+
+  (use-package flycheck-clj-kondo
+    :ensure t
+    :after flycheck
+    :config
+    (require 'flycheck-clj-kondo))
+
+  (use-package eglot
+    :ensure nil
+    :hook
+    (clojure-ts-mode . eglot-ensure)
+    :custom
+    (eglot-documentation-renderer 'markdown-ts-view-mode)
+    (eglot-code-action-indications nil)
+    :config
+    (add-hook 'eglot-managed-mode-hook
+              (lambda ()
+                (remove-hook 'eldoc-display-functions
+                             #'eldoc-display-in-echo-area
+                             t))))
+
+  (use-package eldoc
+    :ensure nil
+    :custom
+    (eldoc-echo-area-use-multiline-p nil)
+    (eldoc-echo-area-display-truncation-message nil))
+
+  (use-package eldoc-box
+    :ensure t
+    :commands (eldoc-box-help-at-point)
+    :general
+    (general-def
+      :states '(normal)
+      :keymaps 'prog-mode-map
+      "K" #'bytesofpie/hover))
+
+  (use-package jarchive
+    :ensure t
+    :config
+    (jarchive-setup))
 #+end_src
