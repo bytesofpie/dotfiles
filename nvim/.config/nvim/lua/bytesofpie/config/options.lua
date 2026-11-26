@@ -58,36 +58,35 @@ vim.opt.splitright = true
 
 -- enable ui2
 require("vim._core.ui2").enable({
-  msg = {
-    target = "msg",
-    targets = {
-      bufread = "msg",
-      bufwrite = "msg",
-      completion = "cmd",
-      confirm = "cmd",
-      echoerr = "pager",
-      emsg = "pager",
-      list_cmd = "pager",
-      lua_error = "pager",
-      progress = "msg",
-      rpc_error = "pager",
-      search_cmd = "cmd",
-      search_count = "cmd",
-      shell_cmd = "pager",
-      shell_err = "pager",
-      shell_out = "pager",
-      shell_ret = "pager",
-      typed_cmd = "msg",
-      verbose = "pager",
-      wildlist = "cmd",
-    },
-    msg = {
-      height = 0.3,
-      timeout = 5000,
-    },
-    pager = {
-      height = 0.5,
-    },
-  },
+	msg = {
+		target = "msg",
+		targets = {
+			bufread = "msg",
+			bufwrite = "msg",
+			completion = "cmd",
+			confirm = "cmd",
+			echoerr = "pager",
+			emsg = "pager",
+			list_cmd = "pager",
+			lua_error = "pager",
+			progress = "msg",
+			rpc_error = "pager",
+			search_cmd = "cmd",
+			search_count = "cmd",
+			shell_cmd = "pager",
+			shell_err = "pager",
+			shell_out = "pager",
+			shell_ret = "pager",
+			typed_cmd = "msg",
+			verbose = "pager",
+			wildlist = "cmd",
+		},
+		msg = {
+			height = 0.3,
+			timeout = 5000,
+		},
+		pager = {
+			height = 0.5,
+		},
+	},
 })
-
